@@ -10,6 +10,8 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import google.generativeai as genai
 from dotenv import load_dotenv
+from threading import Thread
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # Load environment variables
 load_dotenv()
@@ -35,6 +37,22 @@ if not GEMINI_API_KEY:
 
 # Configure Gemini AI
 genai.configure(api_key=GEMINI_API_KEY)
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b'Telegram Bot is running!')
+    
+    def log_message(self, format, *args):
+        pass  # تجاهل HTTP logs
+
+def run_health_server():
+    port = int(os.environ.get('PORT', 10000))
+    server = HTTPServer(('0.0.0.0', port), HealthHandler)
+    logger.info(f"Health server running on port {port}")
+    server.serve_forever()
 
 class TelegramBot:
     def __init__(self):
@@ -106,6 +124,10 @@ def main():
     """Main function to run the bot"""
     logger.info("Starting Telegram Bot with Gemini AI...")
     
+    # Start health server in background thread
+    health_thread = Thread(target=run_health_server, daemon=True)
+    health_thread.start()
+    
     # Create bot instance
     bot = TelegramBot()
     
@@ -125,26 +147,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-# أضف هذه الإضافات في أعلى الملف بعد الـ imports:
-from threading import Thread
-import time
-from http.server import HTTPServer, BaseHTTPRequestHandler
-
-# أضف هذا الكلاس قبل كلاس TelegramBot:
-class HealthHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/plain')
-        self.end_headers()
-        self.wfile.write(b'Bot is running!')
-    
-    def log_message(self, format, *args):
-        pass  # تجاهل logs الـ HTTP
-
-def run_health_server():
-    server = HTTPServer(('0.0.0.0', int(os.environ.get('PORT', 10000))), HealthHandler)
-    server.serve_forever()
-
-# في دالة main() أضف قبل app.run_polling():
-health_thread = Thread(target=run_health_server, daemon=True)
-health_thread.start()
