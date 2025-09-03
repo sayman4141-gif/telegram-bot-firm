@@ -125,3 +125,26 @@ def main():
 
 if __name__ == "__main__":
     main()
+# أضف هذه الإضافات في أعلى الملف بعد الـ imports:
+from threading import Thread
+import time
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
+# أضف هذا الكلاس قبل كلاس TelegramBot:
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b'Bot is running!')
+    
+    def log_message(self, format, *args):
+        pass  # تجاهل logs الـ HTTP
+
+def run_health_server():
+    server = HTTPServer(('0.0.0.0', int(os.environ.get('PORT', 10000))), HealthHandler)
+    server.serve_forever()
+
+# في دالة main() أضف قبل app.run_polling():
+health_thread = Thread(target=run_health_server, daemon=True)
+health_thread.start()
